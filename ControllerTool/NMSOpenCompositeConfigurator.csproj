@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>No Man's Sky VR Controller Tool</AssemblyName>
+    <RootNamespace>NMSOpenCompositeConfigurator</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.3.4</Version>
+	<ApplicationIcon>assets\nms-opencomposite.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+</Project>

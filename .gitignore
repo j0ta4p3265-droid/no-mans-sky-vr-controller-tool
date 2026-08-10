@@ -1,0 +1,35 @@
+# Build output
+build/
+bin/
+obj/
+Debug/
+Release/
+x64/
+x86/
+
+# IDE state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Compiled artifacts
+*.dll
+*.exe
+*.pdb
+*.obj
+*.ilk
+*.exp
+
+# Local game/test data
+ACTIONS.JSON
+TOUCH.JSON
+opencomposite.ini
+controller-layout.txt
+*.bak
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store
