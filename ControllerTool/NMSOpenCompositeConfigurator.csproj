@@ -8,14 +8,33 @@
     <AssemblyName>No Man's Sky VR Controller Tool</AssemblyName>
     <RootNamespace>NMSOpenCompositeConfigurator</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>0.3.4</Version>
-	<ApplicationIcon>assets\nms-opencomposite.ico</ApplicationIcon>
+    <Version>0.1.0</Version>
+    <FileVersion>0.1.0.0</FileVersion>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <Authors>Joao Pedro G.</Authors>
+    <Company>No Man's Sky VR Controller Tool contributors</Company>
+    <Product>No Man's Sky VR Controller Tool</Product>
+    <Description>Open-source controller binding and OpenComposite input configuration tool for No Man's Sky VR.</Description>
+    <Copyright>Copyright (c) 2026 No Man's Sky VR Controller Tool contributors</Copyright>
+    <RepositoryUrl>https://github.com/j0ta4p3265-droid/no-mans-sky-vr-controller-tool</RepositoryUrl>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <ApplicationIcon>assets\nms-opencomposite.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <PublishReadyToRun>false</PublishReadyToRun>
     <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Compile Remove="SelfTest.cs" />
+  </ItemGroup>
 </Project>

@@ -2,6 +2,41 @@ namespace NMSOpenCompositeConfigurator;
 
 internal static class SelfTest
 {
+    public static void RunSettingsAndLocator(string gameFolder, string settingsPath, string reportPath)
+    {
+        try
+        {
+            var expected = Path.GetFullPath(gameFolder).TrimEnd(Path.DirectorySeparatorChar);
+            var settings = new AppSettings
+            {
+                GameFolder = expected,
+                HandLayout = "left"
+            };
+            settings.Save(settingsPath);
+
+            var reloaded = AppSettings.Load(settingsPath);
+            var detected = GameLocator.FindNoMansSky(reloaded.GameFolder);
+            var automaticallyDetected = GameLocator.FindNoMansSky();
+            var binariesDetected = GameLocator.TryNormalizeGameFolder(
+                Path.Combine(expected, "Binaries"), out var normalizedFromBinaries);
+            var passed = reloaded.GameFolder == expected
+                         && reloaded.HandLayout == "left"
+                         && string.Equals(detected, expected, StringComparison.OrdinalIgnoreCase)
+                         && GameLocator.IsValidGameFolder(automaticallyDetected ?? string.Empty)
+                         && binariesDetected
+                         && string.Equals(normalizedFromBinaries, expected, StringComparison.OrdinalIgnoreCase);
+
+            File.WriteAllText(reportPath,
+                passed
+                    ? $"PASS\nSaved: {reloaded.GameFolder}\nDetected from settings: {detected}\nDetected automatically: {automaticallyDetected}\nSettings: {settingsPath}"
+                    : $"FAIL\nSaved: {reloaded.GameFolder}\nDetected from settings: {detected}\nDetected automatically: {automaticallyDetected}\nNormalized Binaries: {normalizedFromBinaries}");
+        }
+        catch (Exception ex)
+        {
+            File.WriteAllText(reportPath, "FAIL: " + ex);
+        }
+    }
+
     public static void Run(string gameFolder, string reportPath)
     {
         try

@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.Security.Cryptography;
-
 namespace NMSOpenCompositeConfigurator;
 
 internal sealed class MainForm : Form
@@ -32,8 +29,7 @@ internal sealed class MainForm : Form
     private readonly CheckBox _enableLeftThumbrestTripleTap = new();
     private readonly CheckBox _enableRightThumbrestTripleTap = new();
     private readonly NumericUpDown _thumbrestDoubleTapWindow = MakeNumber(0.20m, 0.80m, 0.05m);
-    private readonly Label _runtimeStatus = new();
-    private readonly Button _installRuntime = new();
+    private readonly AppSettings _settings = AppSettings.Load();
 
     private string? _loadedFolder;
     private IniDocument? _ini;
@@ -345,11 +341,11 @@ internal sealed class MainForm : Form
         var card = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 430,
+            Height = 360,
             Padding = new Padding(26),
             BackColor = SurfaceRaised,
             ColumnCount = 3,
-            RowCount = 8
+            RowCount = 6
         };
         card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         card.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
@@ -359,8 +355,6 @@ internal sealed class MainForm : Form
         card.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         card.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         card.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
-        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         card.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var title = MakeLabel("Capacitive thumbrest gestures", false);
         title.Font = new Font("Segoe UI Semibold", 13f);
@@ -393,28 +387,12 @@ internal sealed class MainForm : Form
         card.Controls.Add(_thumbrestDoubleTapWindow, 1, 4);
         card.Controls.Add(MakeLabel("seconds", false), 2, 4);
 
-        var runtimeTitle = MakeLabel("OpenComposite runtime", false);
-        runtimeTitle.Font = new Font("Segoe UI Semibold", 11f);
-        card.SetColumnSpan(runtimeTitle, 3);
-        card.Controls.Add(runtimeTitle, 0, 5);
-        _runtimeStatus.Text = "Select the No Man's Sky folder to check the installed runtime.";
-        _runtimeStatus.ForeColor = TextMuted;
-        _runtimeStatus.Dock = DockStyle.Fill;
-        _runtimeStatus.TextAlign = ContentAlignment.MiddleLeft;
-        card.SetColumnSpan(_runtimeStatus, 2);
-        card.Controls.Add(_runtimeStatus, 0, 6);
-        _installRuntime.Text = "Install / update runtime";
-        StyleButton(_installRuntime, Accent);
-		_installRuntime.AutoSize = true;
-		_installRuntime.Anchor = AnchorStyles.Left;
-        _installRuntime.Enabled = false;
-        _installRuntime.Click += (_, _) => InstallBundledRuntime(true);
-        card.Controls.Add(_installRuntime, 2, 6);
-
-        var note = MakeLabel("Close No Man's Sky before installing the runtime or saving this feature. A DLL backup is created automatically.", true);
+        var note = MakeLabel(
+            "Requires the current No Man's Sky OpenComposite runtime from the main download. " +
+            "This companion tool never installs or replaces game DLLs. Close the game before saving changes.", true);
         note.ForeColor = Color.FromArgb(245, 190, 75);
         card.SetColumnSpan(note, 3);
-        card.Controls.Add(note, 0, 7);
+        card.Controls.Add(note, 0, 5);
         page.Padding = new Padding(24);
         page.Controls.Add(card);
         return page;
@@ -422,7 +400,7 @@ internal sealed class MainForm : Form
 
     private void TryAutoDetect()
     {
-        var detected = GameLocator.FindNoMansSky();
+        var detected = GameLocator.FindNoMansSky(_settings.GameFolder);
         if (detected is null)
         {
             SetStatus("Automatic detection failed. Click Browse and select the No Man's Sky folder.", true);
@@ -432,17 +410,12 @@ internal sealed class MainForm : Form
         LoadGameFolder(detected);
     }
 
-    private string HandLayoutPreferencePath
-        => Path.Combine(AppContext.BaseDirectory, "controller-layout.txt");
-
     private void LoadHandLayoutPreference()
     {
         _loadingHandLayoutPreference = true;
         try
         {
-            var saved = File.Exists(HandLayoutPreferencePath)
-                ? File.ReadAllText(HandLayoutPreferencePath).Trim()
-                : "right";
+            var saved = _settings.HandLayout;
             _handLayout.SelectedIndex = saved.Equals("left", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
         }
         catch
@@ -461,11 +434,12 @@ internal sealed class MainForm : Form
             return;
         try
         {
-            File.WriteAllText(HandLayoutPreferencePath, _handLayout.SelectedIndex == 1 ? "left" : "right");
+            _settings.HandLayout = _handLayout.SelectedIndex == 1 ? "left" : "right";
+            _settings.Save();
         }
         catch
         {
-            // The preference is optional. A read-only app folder falls back to right-handed.
+            // The preference is optional. A settings write failure falls back to right-handed.
         }
     }
 
@@ -492,8 +466,16 @@ internal sealed class MainForm : Form
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
             return;
-        _gamePath.Text = dialog.SelectedPath;
-        LoadGameFolder(dialog.SelectedPath);
+        if (GameLocator.TryNormalizeGameFolder(dialog.SelectedPath, out var folder))
+        {
+            _gamePath.Text = folder;
+            LoadGameFolder(folder);
+        }
+        else
+        {
+            _gamePath.Text = dialog.SelectedPath;
+            LoadGameFolder(dialog.SelectedPath);
+        }
     }
 
     private void LoadGameFolder(string folder)
@@ -508,6 +490,7 @@ internal sealed class MainForm : Form
         try
         {
             _loadedFolder = folder;
+            _gamePath.Text = folder;
             _ini = IniDocument.Load(Path.Combine(folder, "Binaries", "opencomposite.ini"));
             _bindings = NmsBindingDocument.Load(folder);
             _leftDeadZone.Value = Clamp(_ini.GetDecimal("leftDeadZoneSize", 0m), _leftDeadZone);
@@ -525,13 +508,26 @@ internal sealed class MainForm : Form
             _showAdvancedContexts.Checked = false;
             PopulateContexts();
             _saveAll.Enabled = true;
-            UpdateRuntimeStatus();
+            RememberGameFolder(folder);
             SetStatus("No Man's Sky loaded. Changes are not written until you click Save changes.");
         }
         catch (Exception ex)
         {
             SetStatus("Could not load the game configuration: " + ex.Message, true);
             _saveAll.Enabled = false;
+        }
+    }
+
+    private void RememberGameFolder(string folder)
+    {
+        try
+        {
+            _settings.GameFolder = folder;
+            _settings.Save();
+        }
+        catch
+        {
+            // The game can still be configured when the optional preference cannot be saved.
         }
     }
 
@@ -694,9 +690,6 @@ internal sealed class MainForm : Form
             var enableLeftThumbrest = _enableLeftThumbrestTripleTap.Checked;
             var enableRightThumbrest = _enableRightThumbrestTripleTap.Checked;
             var enableAnyThumbrest = enableLeftThumbrest || enableRightThumbrest;
-            if (enableAnyThumbrest && !InstallBundledRuntime(false))
-                return;
-
             if (enableAnyThumbrest || _thumbrestWasEnabled)
                 _bindings.ConfigureThumbrestRecentre(enableLeftThumbrest, enableRightThumbrest);
 
@@ -712,7 +705,6 @@ internal sealed class MainForm : Form
             _bindings.SaveWithBackup();
             _thumbrestWasEnabled = enableAnyThumbrest;
             RefreshBindings();
-            UpdateRuntimeStatus();
             SetStatus(successMessage ?? "Saved successfully. Restart No Man's Sky for the changes to take effect.");
         }
         catch (UnauthorizedAccessException)
@@ -760,88 +752,6 @@ internal sealed class MainForm : Form
         {
             SetStatus("Restore failed: " + ex.Message, true);
         }
-    }
-
-    private void UpdateRuntimeStatus()
-    {
-        var packaged = Path.Combine(AppContext.BaseDirectory, "openvr_api.dll");
-        var installed = _loadedFolder is null ? null : Path.Combine(_loadedFolder, "Binaries", "openvr_api.dll");
-        _installRuntime.Enabled = _loadedFolder is not null && File.Exists(packaged);
-
-        if (!File.Exists(packaged))
-        {
-            _runtimeStatus.Text = "The matching runtime DLL is not included beside this development build.";
-            _runtimeStatus.ForeColor = Color.FromArgb(245, 190, 75);
-            return;
-        }
-        if (installed is null || !File.Exists(installed))
-        {
-            _runtimeStatus.Text = "OpenComposite runtime is not installed in the selected game folder.";
-            _runtimeStatus.ForeColor = Color.FromArgb(245, 190, 75);
-            return;
-        }
-
-        try
-        {
-            var current = FilesMatch(packaged, installed);
-            _runtimeStatus.Text = current
-                ? "Matching OpenComposite runtime is installed."
-                : "An older or different openvr_api.dll is installed.";
-            _runtimeStatus.ForeColor = current ? Color.FromArgb(110, 215, 135) : Color.FromArgb(245, 190, 75);
-        }
-        catch (IOException)
-        {
-            _runtimeStatus.Text = "The installed runtime is currently in use. Close No Man's Sky to update it.";
-            _runtimeStatus.ForeColor = Color.FromArgb(245, 190, 75);
-        }
-    }
-
-    private bool InstallBundledRuntime(bool interactive)
-    {
-        if (_loadedFolder is null)
-            return false;
-        var packaged = Path.Combine(AppContext.BaseDirectory, "openvr_api.dll");
-        var installed = Path.Combine(_loadedFolder, "Binaries", "openvr_api.dll");
-        var backup = installed + ".pre-nms-configurator.bak";
-        if (!File.Exists(packaged))
-        {
-            SetStatus("The matching openvr_api.dll is missing beside the configurator.", true);
-            return false;
-        }
-        try
-        {
-            if (File.Exists(installed) && FilesMatch(packaged, installed))
-            {
-                if (interactive)
-                    SetStatus("The matching OpenComposite runtime is already installed.");
-                UpdateRuntimeStatus();
-                return true;
-            }
-            if (File.Exists(installed) && !File.Exists(backup))
-                File.Copy(installed, backup, false);
-            File.Copy(packaged, installed, true);
-            UpdateRuntimeStatus();
-            if (interactive)
-                SetStatus("OpenComposite runtime installed. Restart No Man's Sky.");
-            return true;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            SetStatus("Windows blocked the DLL installation. Close the app and run it as Administrator.", true);
-            return false;
-        }
-        catch (IOException)
-        {
-            SetStatus("Could not replace openvr_api.dll. Close No Man's Sky and try again.", true);
-            return false;
-        }
-    }
-
-    private static bool FilesMatch(string first, string second)
-    {
-        using var left = File.OpenRead(first);
-        using var right = File.OpenRead(second);
-        return SHA256.HashData(left).SequenceEqual(SHA256.HashData(right));
     }
 
     private void SetStatus(string text, bool error = false)
