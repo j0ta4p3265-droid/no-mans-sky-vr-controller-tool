@@ -3,17 +3,17 @@
 Experimental controller-remapping and OpenComposite input configuration tool
 for No Man's Sky VR.
 
-This repository contains the complete source used for the optional controller
-tool and the modified OpenComposite runtime distributed on the associated Nexus
-Mods page. It is published so users and moderators can inspect the project,
-reproduce the build and contribute fixes.
+This repository contains the complete source for the optional controller tool
+and the related modified OpenComposite runtime source. The downloadable release
+on GitHub contains only the controller tool. It is published so users and
+moderators can inspect the project, reproduce the build and contribute fixes.
 
 ## Repository layout
 
 - `ControllerTool/` - C#/.NET 9 Windows Forms application.
 - `OpenComposite-NMS/` - modified OpenComposite source used to build the
   per-game `openvr_api.dll`.
-- `BUILDING.md` - detailed instructions for reproducing both binaries.
+- `BUILDING.md` - detailed instructions for reproducing the controller tool.
 - `SECURITY.md` - summary of the application's local file access and security
   boundaries.
 
@@ -26,22 +26,21 @@ release binaries are stored in this repository.
 - Simplified common contexts and optional advanced technical contexts.
 - Right-handed and left-handed layout filtering.
 - Right-stick sensitivity and independent stick dead-zone configuration.
-- Automatic original-binding and runtime DLL backups.
+- Automatic original-binding backups.
+- Automatic Steam library detection and persistent storage of a manually
+  selected game folder.
 - Independent experimental left/right capacitive-thumbrest triple-tap gestures
   for recentering the VR view.
-- Installation and verification of the matching modified OpenComposite DLL.
 
 ## Security design
 
 The controller tool does not download files, contact remote services, inject
-code into another process or modify game memory. It reads and writes local No
-Man's Sky controller/configuration files selected by the user and can copy the
-included OpenComposite DLL into the game's `Binaries` directory after creating
-a backup.
+code into another process, modify game memory, install runtimes or replace game
+DLLs. It only reads and writes local No Man's Sky controller/configuration files
+selected by the user.
 
-The release is an unsigned, self-contained .NET executable. This packaging can
-occasionally trigger heuristic antivirus detections. The source and build steps
-are provided here for independent review.
+The release is an unsigned, self-contained, single-file .NET application. The
+source and build steps are provided here for independent review.
 
 ## Build
 
@@ -69,4 +68,3 @@ under GPL-3.0. Third-party components retain the license notices contained in
 their respective directories.
 
 OpenComposite upstream: https://gitlab.com/znixian/OpenOVR
-

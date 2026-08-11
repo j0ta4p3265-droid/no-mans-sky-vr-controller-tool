@@ -1,5 +1,7 @@
 # Build output
 build/
+outputs/
+work/
 bin/
 obj/
 Debug/
